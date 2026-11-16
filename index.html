@@ -112,12 +112,13 @@ function msel(id,vals,cur){$(id).innerHTML='<option value="">Tất cả các th�
 const ecols=m=>F.filter(f=>!HC[m].includes(f[0]));
 const ehead=m=>'<tr><th>STT</th>'+ecols(m).map(f=>`<th>${f[1]}</th>`).join('')+'<th>Thao tác</th></tr>';
 const erows=(L,m,s)=>L.map((e,i)=>`<tr class="${due(e)?'due':''}"><td>${s+i+1}</td>`+ecols(m).map(f=>`<td>${f[2]?fd(e[f[0]]):esc(e[f[0]])}</td>`).join('')+`<td style="white-space:nowrap"><button class="ic" title="Sửa" onclick="editEmp(${e.id})">✏️</button>${m=='l'?`<button class="ic" title="Đi làm lại" onclick="back(${e.id})">↩</button>`:`<button class="ic" title="Chuyển nghỉ việc" onclick="leave(${e.id})">🚪</button>`}<button class="ic" title="Xóa" onclick="del(${e.id})">🗑</button></td></tr>`).join('')||`<tr><td colspan="${ecols(m).length+2}" style="text-align:center;color:var(--m);padding:16px">Không có dữ liệu</td></tr>`;
-const byHc=(a,b)=>(a.he||'\uffff').localeCompare(b.he||'\uffff','vi')||(a.cd||'\uffff').localeCompare(b.cd||'\uffff','vi');
+const HO=['VPT','UNIS GREEN','UNIS','UNIMAX','UNILUX','UNICHEMI','LOTINA'],hr=h=>{const i=HO.indexOf((h||'').trim().toUpperCase());return i<0?99:i};
+const byHc=(a,b)=>hr(a.he)-hr(b.he)||(a.he||'').localeCompare(b.he||'','vi')||(a.dv||'\uffff').localeCompare(b.dv||'\uffff','vi');
 const byDv=(a,b)=>(a.dv||'\uffff').localeCompare(b.dv||'\uffff','vi');
 function renderEmp(){const q=$('#q').value.toLowerCase();
 ms('#fdv','Tất cả đơn vị',S.emps.map(e=>e.dv),fdvS);ms('#fcd','Tất cả vị trí',S.emps.map(e=>e.cd),fcdS);
 const flt=e=>(hs=='Tất cả'||(e.he||'Khác')==hs)&&(!fdvS.size||fdvS.has(e.dv))&&(!fcdS.size||fcdS.has(e.cd))&&(!q||[e.ten,e.msnv,e.cd,e.dv].join(' ').toLowerCase().includes(q));
-const hsList=['Tất cả',...new Set(S.emps.map(e=>e.he||'Khác'))];
+const hsList=['Tất cả',...[...new Set(S.emps.map(e=>e.he||'Khác'))].sort((a,b)=>hr(a)-hr(b)||a.localeCompare(b,'vi'))];
 $('#hs').innerHTML=hsList.map(h=>{const n=S.emps.filter(e=>!e.nghi&&(h=='Tất cả'||(e.he||'Khác')==h)).length;return`<span class="pill ${h==hs?'on':''}" onclick="hs='${esc(h)}';page=0;renderEmp()">${esc(h)} (${n})</span>`}).join('');
 const A=S.emps.filter(e=>!e.nghi&&flt(e)).sort(byHc),PA=A.filter(e=>e.dkn),LA=S.emps.filter(e=>e.nghi&&flt(e)).sort(byHc);
 $('#cnt').textContent=A.length+' nhân viên đang làm';
