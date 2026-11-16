@@ -112,20 +112,21 @@ function msel(id,vals,cur){$(id).innerHTML='<option value="">Tất cả các th�
 const ecols=m=>F.filter(f=>!HC[m].includes(f[0]));
 const ehead=m=>'<tr><th>STT</th>'+ecols(m).map(f=>`<th>${f[1]}</th>`).join('')+'<th>Thao tác</th></tr>';
 const erows=(L,m,s)=>L.map((e,i)=>`<tr class="${due(e)?'due':''}"><td>${s+i+1}</td>`+ecols(m).map(f=>`<td>${f[2]?fd(e[f[0]]):esc(e[f[0]])}</td>`).join('')+`<td style="white-space:nowrap"><button class="ic" title="Sửa" onclick="editEmp(${e.id})">✏️</button>${m=='l'?`<button class="ic" title="Đi làm lại" onclick="back(${e.id})">↩</button>`:`<button class="ic" title="Chuyển nghỉ việc" onclick="leave(${e.id})">🚪</button>`}<button class="ic" title="Xóa" onclick="del(${e.id})">🗑</button></td></tr>`).join('')||`<tr><td colspan="${ecols(m).length+2}" style="text-align:center;color:var(--m);padding:16px">Không có dữ liệu</td></tr>`;
+const byHc=(a,b)=>(a.he||'\uffff').localeCompare(b.he||'\uffff','vi')||(a.cd||'\uffff').localeCompare(b.cd||'\uffff','vi');
 const byDv=(a,b)=>(a.dv||'\uffff').localeCompare(b.dv||'\uffff','vi');
 function renderEmp(){const q=$('#q').value.toLowerCase();
 ms('#fdv','Tất cả đơn vị',S.emps.map(e=>e.dv),fdvS);ms('#fcd','Tất cả vị trí',S.emps.map(e=>e.cd),fcdS);
 const flt=e=>(hs=='Tất cả'||(e.he||'Khác')==hs)&&(!fdvS.size||fdvS.has(e.dv))&&(!fcdS.size||fcdS.has(e.cd))&&(!q||[e.ten,e.msnv,e.cd,e.dv].join(' ').toLowerCase().includes(q));
 const hsList=['Tất cả',...new Set(S.emps.map(e=>e.he||'Khác'))];
 $('#hs').innerHTML=hsList.map(h=>{const n=S.emps.filter(e=>!e.nghi&&(h=='Tất cả'||(e.he||'Khác')==h)).length;return`<span class="pill ${h==hs?'on':''}" onclick="hs='${esc(h)}';page=0;renderEmp()">${esc(h)} (${n})</span>`}).join('');
-const A=S.emps.filter(e=>!e.nghi&&flt(e)).sort(byDv),PA=A.filter(e=>e.dkn),LA=S.emps.filter(e=>e.nghi&&flt(e)).sort(byDv);
+const A=S.emps.filter(e=>!e.nghi&&flt(e)).sort(byHc),PA=A.filter(e=>e.dkn),LA=S.emps.filter(e=>e.nghi&&flt(e)).sort(byHc);
 $('#cnt').textContent=A.length+' nhân viên đang làm';
 $('#tg').textContent=(showL?'🙈 Ẩn':'👁 Hiện')+` DS dự kiến nghỉ (${PA.length}) / đã nghỉ việc (${LA.length})`;$('#lw').classList.toggle('hide',!showL);
 $('#eh').innerHTML=ehead('a');const P=100,tp=Math.max(1,Math.ceil(A.length/P));if(page>=tp)page=0;
 $('#eb').innerHTML=erows(A.slice(page*P,page*P+P),'a',page*P);
 $('#pg').innerHTML=`<button class="b s" ${page?'':'disabled'} onclick="page--;renderEmp()">‹</button> Trang ${page+1}/${tp} <button class="b s" ${page<tp-1?'':'disabled'} onclick="page++;renderEmp()">›</button>`;
 if(showL){msel('#mp',PA.map(e=>e.dkn),pM);msel('#ml',LA.map(e=>e.nghi),lM);
-const P2=PA.filter(e=>!pM||e.dkn.slice(0,7)==pM).sort((a,b)=>byDv(a,b)||(a.dkn<b.dkn?-1:1)),L2=LA.filter(e=>!lM||e.nghi.slice(0,7)==lM).sort((a,b)=>byDv(a,b)||(a.nghi<b.nghi?1:-1));
+const P2=PA.filter(e=>!pM||e.dkn.slice(0,7)==pM).sort((a,b)=>byHc(a,b)||(a.dkn<b.dkn?-1:1)),L2=LA.filter(e=>!lM||e.nghi.slice(0,7)==lM).sort((a,b)=>byHc(a,b)||(a.nghi<b.nghi?1:-1));
 $('#cp').textContent=P2.length+' người';$('#cl').textContent=L2.length+' người';
 $('#ph').innerHTML=ehead('p');$('#pb').innerHTML=erows(P2,'p',0);$('#lh').innerHTML=ehead('l');$('#lb').innerHTML=erows(L2,'l',0)}}
 $('#q').oninput=()=>{page=0;renderEmp()};function ms(id,label,vals,set){const el=$(id),v=[...new Set(vals.filter(Boolean))].sort(),sig=v.join('|');[...set].forEach(x=>{if(!v.includes(x))set.delete(x)});
@@ -156,9 +157,9 @@ const sh=l=>mk([['STT',...H],...l.map((e,i)=>[i+1,...F.map(f=>f[2]&&e[f[0]]?new 
 XLSX.utils.book_append_sheet(wb,sh(act()),'DS');XLSX.utils.book_append_sheet(wb,sh(gone()),'Nghỉ việc');
 XLSX.writeFile(wb,'Danh_sach_nhan_su_'+TODAY+'.xlsx',{cellDates:true})}
 /* ---------- Recruitment ---------- */
-const RF=[['dv','Đơn vị'],['cd','Vị trí tuyển dụng'],['sl','Số lượng cần tuyển','number'],['bd','Thời gian bắt đầu tuyển','date'],['cv','Số CV đã gửi','number'],['cvd','Số CV đạt','number'],['pv','Số lượng đến PV','number'],['pvd','PV đạt','number'],['dat','Đã tuyển','number'],['gc','Ghi chú']];
-const nm=o=>{['sl','cv','cvd','pv','pvd','dat'].forEach(k=>o[k]=+o[k]||0);return o};
-const rm=r=>Math.max(0,(+r.sl||0)-(+r.dat||0)),cp=r=>Math.max(0,(+r.cvd||0)-(+r.pv||0)),sm=(L,f)=>L.reduce((a,r)=>a+(+f(r)||0),0);
+const RF=[['dv','Đơn vị'],['cd','Vị trí tuyển dụng'],['sl','Số lượng cần tuyển','number'],['bd','Thời gian bắt đầu tuyển','date'],['cv','Số CV đã gửi','number'],['cvd','Số CV đạt','number'],['pv','Số lượng đến PV','number'],['pvd','PV đạt','number'],['huy','Hủy PV','number'],['dat','Đã tuyển','number'],['gc','Ghi chú']];
+const nm=o=>{['sl','cv','cvd','pv','pvd','huy','dat'].forEach(k=>o[k]=+o[k]||0);return o};
+const rm=r=>Math.max(0,(+r.sl||0)-(+r.dat||0)),cp=r=>Math.max(0,(+r.cvd||0)-(+r.pv||0)-(+r.huy||0)),sm=(L,f)=>L.reduce((a,r)=>a+(+f(r)||0),0);
 const hc=(h,l,s=65)=>`hsl(${h},${s}%,${l}%)`;
 function uh(){const m={};[...new Set(S.rec.map(r=>r.dv))].sort().forEach((u,i)=>m[u]=Math.round(i*137.5)%360);return m}
 const mode=(arr,k)=>{const m={};arr.forEach(e=>{if(e[k]&&e[k]!='0')m[e[k]]=(m[e[k]]||0)+1});return Object.keys(m).sort((a,b)=>m[b]-m[a])[0]||''};
@@ -169,9 +170,9 @@ function doneRec(id){const r=S.rec.find(x=>x.id==id);form('Hoàn thành tuyển 
 function reopenRec(id){const r=S.rec.find(x=>x.id==id);if(confirm('Mở lại để tiếp tục tuyển?')){r.done=false;r.dxong='';save();render()}}
 function delRec(id){if(confirm('Xóa dòng này?')){S.rec=S.rec.filter(x=>x.id!=id);save();render()}}
 let dM='',rch=[];
-const RH=d=>['#','Đơn vị','Vị trí','Số lượng','Bắt đầu tuyển','CV đã gửi','CV đạt','Đến PV','PV đạt','Chưa PV','Đã tuyển','Còn lại','Ghi chú',...(d?['Ngày hoàn thành']:[]),'Thao tác'];
-const RR=(r,i,d,H)=>{const h=H[r.dv]||0;return`<tr style="background:${hc(h,95,80)}"><td style="border-left:6px solid ${hc(h,45)}">${i+1}</td><td><span style="background:${hc(h,42)};color:#fff;padding:2px 9px;border-radius:10px;white-space:nowrap">${esc(r.dv)}</span></td><td>${esc(r.cd)}</td><td class="n">${r.sl}</td><td>${fd(r.bd)}</td><td class="n">${r.cv||0}</td><td class="n">${r.cvd||0}</td><td class="n">${r.pv||0}</td><td class="n">${r.pvd||0}</td><td class="n">${cp(r)}</td><td class="n">${r.dat||0}</td><td class="n"><b>${rm(r)}</b></td><td>${esc(r.gc)}</td>${d?`<td>${fd(r.dxong)}</td>`:''}<td style="white-space:nowrap"><button class="ic" title="Sửa" onclick="editRec(${r.id})">✏️</button>${d?`<button class="ic" title="Mở lại" onclick="reopenRec(${r.id})">↩</button>`:`<button class="ic" title="Hoàn thành" onclick="doneRec(${r.id})">✔️</button>`}<button class="ic" title="Xóa" onclick="delRec(${r.id})">🗑</button></td></tr>`};
-const RT2=(L,d)=>`<tr><td colspan="3">Tổng</td><td class="n">${sm(L,r=>r.sl)}</td><td></td><td class="n">${sm(L,r=>r.cv)}</td><td class="n">${sm(L,r=>r.cvd)}</td><td class="n">${sm(L,r=>r.pv)}</td><td class="n">${sm(L,r=>r.pvd)}</td><td class="n">${sm(L,cp)}</td><td class="n">${sm(L,r=>r.dat)}</td><td class="n">${sm(L,rm)}</td><td colspan="${d?3:2}"></td></tr>`;
+const RH=d=>['#','Đơn vị','Vị trí','Số lượng','Bắt đầu tuyển','CV đã gửi','CV đạt','Đến PV','PV đạt','Hủy PV','Chưa PV','Đã tuyển','Còn lại','Ghi chú',...(d?['Ngày hoàn thành']:[]),'Thao tác'];
+const RR=(r,i,d,H)=>{const h=H[r.dv]||0;return`<tr style="background:${hc(h,95,80)}"><td style="border-left:6px solid ${hc(h,45)}">${i+1}</td><td><span style="background:${hc(h,42)};color:#fff;padding:2px 9px;border-radius:10px;white-space:nowrap">${esc(r.dv)}</span></td><td>${esc(r.cd)}</td><td class="n">${r.sl}</td><td>${fd(r.bd)}</td><td class="n">${r.cv||0}</td><td class="n">${r.cvd||0}</td><td class="n">${r.pv||0}</td><td class="n">${r.pvd||0}</td><td class="n">${r.huy||0}</td><td class="n">${cp(r)}</td><td class="n">${r.dat||0}</td><td class="n"><b>${rm(r)}</b></td><td>${esc(r.gc)}</td>${d?`<td>${fd(r.dxong)}</td>`:''}<td style="white-space:nowrap"><button class="ic" title="Sửa" onclick="editRec(${r.id})">✏️</button>${d?`<button class="ic" title="Mở lại" onclick="reopenRec(${r.id})">↩</button>`:`<button class="ic" title="Hoàn thành" onclick="doneRec(${r.id})">✔️</button>`}<button class="ic" title="Xóa" onclick="delRec(${r.id})">🗑</button></td></tr>`};
+const RT2=(L,d)=>`<tr><td colspan="3">Tổng</td><td class="n">${sm(L,r=>r.sl)}</td><td></td><td class="n">${sm(L,r=>r.cv)}</td><td class="n">${sm(L,r=>r.cvd)}</td><td class="n">${sm(L,r=>r.pv)}</td><td class="n">${sm(L,r=>r.pvd)}</td><td class="n">${sm(L,r=>r.huy)}</td><td class="n">${sm(L,cp)}</td><td class="n">${sm(L,r=>r.dat)}</td><td class="n">${sm(L,rm)}</td><td colspan="${d?3:2}"></td></tr>`;
 function renderRec(){const H=uh(),A=S.rec.filter(r=>!r.done).sort(byDv),D0=S.rec.filter(r=>r.done),D=D0.filter(r=>!dM||(r.dxong||'').slice(0,7)==dM).sort(byDv);
 msel('#md',D0.map(r=>r.dxong),dM);$('#cd2').textContent=D.length+' vị trí';
 const hd=d=>'<tr>'+RH(d).map(x=>`<th>${x}</th>`).join('')+'</tr>',em=d=>`<tr><td colspan="${RH(d).length}" style="text-align:center;color:var(--m);padding:20px">Chưa có dữ liệu</td></tr>`;
@@ -179,16 +180,16 @@ $('#rh').innerHTML=hd(0);$('#rb').innerHTML=A.map((r,i)=>RR(r,i,0,H)).join('')||
 $('#dh').innerHTML=hd(1);$('#dbd').innerHTML=D.map((r,i)=>RR(r,i,1,H)).join('')||em(1);$('#df').innerHTML=D.length?RT2(D,1):'';
 rch.forEach(c=>c.destroy());rch=[];
 if(!S.rec.length){$('#rdash').innerHTML='';return}
-const us=[...new Set(S.rec.map(r=>r.dv))].sort(),by=f=>us.map(u=>sm(S.rec.filter(r=>r.dv==u),f)),sl=by(r=>r.sl),cv=by(r=>r.cv),cvd=by(r=>r.cvd),pv=by(r=>r.pv),pvd=by(r=>r.pvd),dat=by(r=>r.dat);
+const us=[...new Set(S.rec.map(r=>r.dv))].sort(),by=f=>us.map(u=>sm(S.rec.filter(r=>r.dv==u),f)),sl=by(r=>r.sl),cv=by(r=>r.cv),cvd=by(r=>r.cvd),pv=by(r=>r.pv),pvd=by(r=>r.pvd),huy=by(r=>r.huy),dat=by(r=>r.dat);
 const T=a=>a.reduce((x,y)=>x+y,0),pc=(a,b)=>b?(a*100/b).toFixed(1)+'%':'0%',kp=(c,l,v,s)=>`<div class="k ${c}"><small>${l}</small><b>${v}${s?` <small>${s}</small>`:''}</b></div>`;
-$('#rdash').innerHTML=`<h3 style="margin:4px 0 12px">📊 Dashboard tuyển dụng</h3><div class="kp">${kp('','Số lượng cần tuyển',T(sl))}${kp('','CV đã nhận',T(cv))}${kp('','CV đạt',T(cvd),pc(T(cvd),T(cv))+' / CV')}${kp('o','Đến phỏng vấn',T(pv),pc(T(pv),T(cvd))+' / CV đạt')}${kp('r','Chưa phỏng vấn',Math.max(0,T(cvd)-T(pv)))}${kp('g','PV đạt',T(pvd),pc(T(pvd),T(pv))+' / đến PV')}${kp('g','Đã tuyển',T(dat),pc(T(dat),T(sl))+' / cần tuyển')}${kp('o','Còn lại cần tuyển',Math.max(0,T(sl)-T(dat)))}</div>
+$('#rdash').innerHTML=`<h3 style="margin:4px 0 12px">📊 Dashboard tuyển dụng</h3><div class="kp">${kp('','Số lượng cần tuyển',T(sl))}${kp('','CV đã nhận',T(cv))}${kp('','CV đạt',T(cvd),pc(T(cvd),T(cv))+' / CV')}${kp('o','Đến phỏng vấn',T(pv),pc(T(pv),T(cvd))+' / CV đạt')}${kp('r','Hủy phỏng vấn',T(huy))}${kp('o','Chưa phỏng vấn',sm(S.rec,cp))}${kp('g','PV đạt',T(pvd),pc(T(pvd),T(pv))+' / đến PV')}${kp('g','Đã tuyển',T(dat),pc(T(dat),T(sl))+' / cần tuyển')}${kp('o','Còn lại cần tuyển',Math.max(0,T(sl)-T(dat)))}</div>
 <div class="grid"><div class="card"><div class="ch"><canvas id="rc1"></canvas></div></div><div class="card"><div class="ch"><canvas id="rc2"></canvas></div></div><div class="card" style="grid-column:1/-1"><div class="ch"><canvas id="rc3"></canvas></div></div></div>`;
-const o=t=>({maintainAspectRatio:false,plugins:{legend:{position:'bottom'},title:{display:true,text:t}}}),CO=['#94a3b8','#2563eb','#f59e0b','#16a34a','#7c3aed'];
-rch.push(new Chart($('#rc1'),{type:'bar',data:{labels:['CV đã nhận','CV đạt','Đến PV','PV đạt','Đã tuyển'],datasets:[{data:[T(cv),T(cvd),T(pv),T(pvd),T(dat)],backgroundColor:CO}]},options:{indexAxis:'y',maintainAspectRatio:false,plugins:{legend:{display:false},title:{display:true,text:'Phễu tuyển dụng (toàn bộ)'}}}}));
-rch.push(new Chart($('#rc2'),{type:'bar',data:{labels:us,datasets:[['CV đã nhận',cv],['CV đạt',cvd],['Đến PV',pv],['PV đạt',pvd],['Đã tuyển',dat]].map((s,i)=>({label:s[0],data:s[1],backgroundColor:CO[i]}))},options:o('CV, phỏng vấn và đã tuyển theo đơn vị')}));
+const o=t=>({maintainAspectRatio:false,plugins:{legend:{position:'bottom'},title:{display:true,text:t}}}),CO=['#94a3b8','#2563eb','#f59e0b','#16a34a','#7c3aed','#dc2626'];
+rch.push(new Chart($('#rc1'),{type:'bar',data:{labels:['CV đã nhận','CV đạt','Đến PV','PV đạt','Đã tuyển','Hủy PV'],datasets:[{data:[T(cv),T(cvd),T(pv),T(pvd),T(dat),T(huy)],backgroundColor:CO}]},options:{indexAxis:'y',maintainAspectRatio:false,plugins:{legend:{display:false},title:{display:true,text:'Phễu tuyển dụng (toàn bộ)'}}}}));
+rch.push(new Chart($('#rc2'),{type:'bar',data:{labels:us,datasets:[['CV đã nhận',cv],['CV đạt',cvd],['Đến PV',pv],['PV đạt',pvd],['Đã tuyển',dat],['Hủy PV',huy]].map((s,i)=>({label:s[0],data:s[1],backgroundColor:CO[i]}))},options:o('CV, phỏng vấn và đã tuyển theo đơn vị')}));
 rch.push(new Chart($('#rc3'),{type:'bar',data:{labels:us,datasets:[{label:'Cần tuyển',data:sl,backgroundColor:us.map(u=>hc(H[u],82,75)),borderColor:us.map(u=>hc(H[u],42)),borderWidth:2},{label:'Đã tuyển',data:dat,backgroundColor:us.map(u=>hc(H[u],42))}]},options:o('Số lượng đã tuyển so với cần tuyển (mỗi đơn vị một màu)')}))}
 $('#md').onchange=e=>{dM=e.target.value;renderRec()};
-function dlRec(){const wb=XLSX.utils.book_new(),f=(L,d)=>[RH(d).slice(0,-1),...L.map((r,i)=>[i+1,r.dv,r.cd,r.sl,fd(r.bd),r.cv||0,r.cvd||0,r.pv||0,r.pvd||0,cp(r),r.dat||0,rm(r),r.gc||'',...(d?[fd(r.dxong)]:[])])];
+function dlRec(){const wb=XLSX.utils.book_new(),f=(L,d)=>[RH(d).slice(0,-1),...L.map((r,i)=>[i+1,r.dv,r.cd,r.sl,fd(r.bd),r.cv||0,r.cvd||0,r.pv||0,r.pvd||0,r.huy||0,cp(r),r.dat||0,rm(r),r.gc||'',...(d?[fd(r.dxong)]:[])])];
 XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(f(S.rec.filter(r=>!r.done),0)),'Đang tuyển');XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(f(S.rec.filter(r=>r.done),1)),'Đã tuyển xong');XLSX.writeFile(wb,'Tuyen_dung_'+TODAY+'.xlsx')}
 /* ---------- Reports ---------- */
 const RT=['1. Biến động theo kênh','2. Biến động theo đơn vị','3. Biến động theo vị trí','4. Báo cáo khác','5. Theo tháng / năm','6. Thâm niên & độ tuổi'];
