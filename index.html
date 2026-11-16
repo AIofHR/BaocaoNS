@@ -36,17 +36,22 @@ td.n,th.n{text-align:right}tfoot td{font-weight:700;background:#f1f5f9}
 <main>
 <section id="s0">
 <div class="card">
-<div class="bar"><div class="pills" id="hs"></div><span class="sp"></span>
-<input id="q" placeholder="🔍 Tìm tên, MSNV, chức danh..." size="30">
-<select id="st"><option value="active">Đang làm việc</option><option value="left">Đã nghỉ việc</option></select></div>
+<div class="bar"><div class="pills" id="hs"></div></div>
+<div class="bar"><input id="q" placeholder="🔍 Tìm tên, MSNV, chức danh..." size="26"><select id="fdv"></select><select id="fvg"></select><span class="sp"></span><button class="b s" id="tg"></button></div>
 <div class="bar"><button class="b g" onclick="addEmp()">＋ Thêm nhân viên</button>
 <label class="b s">⬆ Import Excel<input type="file" id="imp" accept=".xlsx,.xls,.csv" hidden></label>
 <button class="b s" onclick="exportX()">⬇ Xuất Excel</button><button class="b s r" style="color:#fff" onclick="if(confirm('Khôi phục dữ liệu gốc từ file Excel ban đầu? Mọi thay đổi (kể cả trên Firebase) sẽ bị ghi đè.')){S={emps:JSON.parse(JSON.stringify(DATA)),rec:[],cut:{},nid:1000};save();render()}">↺ Khôi phục gốc</button>
 <span class="sp"></span><b id="cnt"></b></div>
-<div class="tw"><table><thead id="eh"></thead><tbody id="eb"></tbody></table></div><div class="pg" id="pg"></div></div></section>
-<section id="s1" class="hide"><div class="card"><h3 style="margin-top:0">Kế hoạch tuyển dụng</h3>
-<div class="bar"><button class="b g" onclick="addRec()">＋ Thêm nhu cầu tuyển dụng</button></div>
-<div class="tw"><table><thead><tr><th>#</th><th>Hệ thống</th><th>Vùng</th><th>Kênh</th><th>Đơn vị</th><th>Vị trí</th><th>Phân loại</th><th class="n">Số lượng</th><th>Dự kiến nhận việc</th><th></th></tr></thead><tbody id="rb"></tbody><tfoot id="rf"></tfoot></table></div></div></section>
+<div class="tw"><table><thead id="eh"></thead><tbody id="eb"></tbody></table></div><div class="pg" id="pg"></div></div>
+<div id="lw" class="hide">
+<div class="card"><div class="bar"><h4 style="margin:0">⏳ Dự kiến nghỉ việc</h4><select id="mp"></select><span class="sp"></span><b id="cp"></b></div><div class="tw"><table><thead id="ph"></thead><tbody id="pb"></tbody></table></div></div>
+<div class="card"><div class="bar"><h4 style="margin:0">🚪 Đã nghỉ việc</h4><select id="ml"></select><span class="sp"></span><b id="cl"></b></div><div class="tw"><table><thead id="lh"></thead><tbody id="lb"></tbody></table></div></div></div></section>
+<section id="s1" class="hide">
+<div class="card"><div class="bar"><h3 style="margin:0">Kế hoạch tuyển dụng (đang tuyển)</h3><span class="sp"></span><button class="b g" onclick="addRec()">＋ Thêm nhu cầu tuyển dụng</button><button class="b s" onclick="dlRec()">⬇ Tải Excel</button></div>
+<div class="tw"><table><thead id="rh"></thead><tbody id="rb"></tbody><tfoot id="rf"></tfoot></table></div></div>
+<div class="card"><div class="bar"><h3 style="margin:0">✅ Đã tuyển và nhận việc xong</h3><select id="md"></select><span class="sp"></span><b id="cd2"></b></div>
+<div class="tw"><table><thead id="dh"></thead><tbody id="dbd"></tbody><tfoot id="df"></tfoot></table></div></div>
+<div id="rdash"></div></section>
 <section id="s2" class="hide"><div class="rt" id="rt"></div><div id="rp"></div></section>
 </main>
 <datalist id="dl_he"></datalist><datalist id="dl_vung"></datalist><datalist id="dl_kenh"></datalist><datalist id="dl_dv"></datalist><datalist id="dl_cd"></datalist><datalist id="dl_pl"></datalist>
@@ -63,6 +68,7 @@ window.getS=()=>S;window.setS=s=>{S=s};
 const $=q=>document.querySelector(q),esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const iso=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
 const TODAY=iso(new Date()),fd=s=>s?s.split('-').reverse().join('/'):'';
+const parseD=s=>{const m=String(s).trim().match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})$/);if(!m)return null;const[d,mo,y]=[+m[1],+m[2],+m[3]],dt=new Date(y,mo-1,d);return dt.getFullYear()==y&&dt.getMonth()==mo-1&&dt.getDate()==d?`${y}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}`:null};
 const kn=x=>x&&x!='0'?x:'Khác',nv=x=>x&&x!='0'?x:'Khác';
 const act=()=>S.emps.filter(e=>!e.nghi),gone=()=>S.emps.filter(e=>e.nghi);
 const due=e=>!e.nghi&&e.dkn&&e.dkn<=TODAY;
@@ -75,9 +81,11 @@ function go(i){tab=i;[...$('#nav').children].forEach((b,j)=>b.classList.toggle('
 function dls(){for(const k in DL){const set=new Set([...S.emps,...S.rec].map(e=>e[k]).filter(Boolean));$('#dl_'+k).innerHTML=[...set].sort().map(v=>`<option value="${esc(v)}">`).join('')}}
 function render(){dls();[renderEmp,renderRec,renderRep][tab]();checkDue()}
 /* ---------- Modal ---------- */
-function form(title,fields,v,ok,extra){const h=fields.map(([k,l,t])=>`<div class="${k=='gc'?'w':''}"><label>${l}</label><input name="${k}" type="${t||'text'}" ${DL[k]?`list="dl_${DL[k]}"`:''} value="${esc(v[k]??'')}"></div>`).join('');
+function form(title,fields,v,ok,extra){const h=fields.map(([k,l,t])=>`<div class="${k=='gc'?'w':''}"><label>${l}${t=='date'?' (dd/mm/yyyy)':''}</label><input name="${k}" type="${t=='date'?'text':t||'text'}" ${t=='date'?'placeholder="dd/mm/yyyy"':''} ${DL[k]?`list="dl_${DL[k]}"`:''} value="${esc(t=='date'?fd(v[k]):v[k]??'')}"></div>`).join('');
 $('#mm').innerHTML=`<div class="mask"><div class="mod"><h3>${title}</h3>${extra||''}<div class="f">${h}</div><div class="foot"><button class="b s" id="mc">Hủy</button><button class="b" id="mo">Lưu</button></div></div></div>`;
-$('#mc').onclick=()=>$('#mm').innerHTML='';$('#mo').onclick=()=>{const o={};$('#mm').querySelectorAll('input[name]').forEach(i=>o[i.name]=i.value.trim());if(ok(o)!==false)$('#mm').innerHTML='';save();render()}}
+$('#mc').onclick=()=>$('#mm').innerHTML='';$('#mo').onclick=()=>{const o={};$('#mm').querySelectorAll('input[name]').forEach(i=>o[i.name]=i.value.trim());
+for(const[k,l,t]of fields)if(t=='date'&&o[k]){const p=parseD(o[k]);if(!p){alert('Ngày không hợp lệ: '+l+' (đúng định dạng dd/mm/yyyy)');return}o[k]=p}
+if(ok(o)===false)return;$('#mm').innerHTML='';save();render()}}
 const empF=l=>F.filter(f=>l||f[0]!='nghi');
 function addEmp(){form('Thêm nhân viên mới',empF(),{he:hs!='Tất cả'?hs:''},o=>{if(!o.ten){alert('Nhập họ tên');return false}if(o.msnv&&S.emps.some(e=>e.msnv==o.msnv)){alert('MSNV đã tồn tại');return false}S.emps.push({...o,id:++S.nid})})}
 function editEmp(id){const e=S.emps.find(x=>x.id==id);form('Chỉnh sửa nhân viên',empF(!!e.nghi),e,o=>{Object.assign(e,o)})}
@@ -88,23 +96,37 @@ function del(id){const e=S.emps.find(x=>x.id==id);if(confirm('Xóa '+e.ten+'?'))
 let asking=false;
 function checkDue(){if(asking)return;const e=act().find(due);if(!e)return;asking=true;
 $('#mm').innerHTML=`<div class="mask"><div class="mod"><h3 style="color:var(--r)">⚠ Đến hạn nghỉ việc</h3><p>Hôm nay đến hạn nghỉ việc (${fd(e.dkn)}) của <b>${esc(e.ten)}</b> – ${esc(e.msnv)} – ${esc(e.cd)} (${esc(e.dv)}).<br>Có chuyển xuống phần nghỉ việc hay không?</p>
-<div class="f"><div class="w hide" id="nd"><label>Ngày nghỉ việc mới</label><input type="date" id="ndv" value="${e.dkn}"></div></div>
+<div class="f"><div class="w hide" id="nd"><label>Ngày nghỉ việc mới (dd/mm/yyyy)</label><input type="text" placeholder="dd/mm/yyyy" id="ndv" value="${fd(e.dkn)}"></div></div>
 <div class="foot"><button class="b r" id="y">Có, chuyển nghỉ việc</button><button class="b s" id="n">Không, sửa ngày nghỉ</button></div></div></div>`;
 $('#y').onclick=()=>{e.nghi=e.dkn;done()};
-$('#n').onclick=()=>{if($('#nd').classList.contains('hide')){$('#nd').classList.remove('hide');$('#n').textContent='Lưu ngày mới';return}const v=$('#ndv').value;if(!v||v<=TODAY){alert('Chọn ngày sau hôm nay');return}e.dkn=v;done()};
+$('#n').onclick=()=>{if($('#nd').classList.contains('hide')){$('#nd').classList.remove('hide');$('#n').textContent='Lưu ngày mới';return}const v=parseD($('#ndv').value);if(!v||v<=TODAY){alert('Nhập ngày hợp lệ (dd/mm/yyyy) sau hôm nay');return}e.dkn=v;done()};
 function done(){asking=false;$('#mm').innerHTML='';save();render()}}
 setInterval(()=>{if(iso(new Date())!=TODAY)location.reload();else checkDue()},60000);
 /* ---------- Employees ---------- */
-function renderEmp(){const hsList=['Tất cả',...new Set(S.emps.map(e=>e.he||'Khác'))];
-$('#hs').innerHTML=hsList.map(h=>{const n=h=='Tất cả'?S.emps.filter(e=>$('#st').value=='left'?e.nghi:!e.nghi).length:S.emps.filter(e=>(e.he||'Khác')==h&&($('#st').value=='left'?e.nghi:!e.nghi)).length;return`<span class="pill ${h==hs?'on':''}" onclick="hs='${esc(h)}';page=0;renderEmp()">${esc(h)} (${n})</span>`}).join('');
-const L=$('#st').value=='left',q=$('#q').value.toLowerCase();
-const rows=S.emps.filter(e=>(L?e.nghi:!e.nghi)&&(hs=='Tất cả'||(e.he||'Khác')==hs)&&(!q||[e.ten,e.msnv,e.cd,e.dv].join(' ').toLowerCase().includes(q)));
-$('#cnt').textContent=rows.length+' nhân viên';
-$('#eh').innerHTML='<tr><th>STT</th>'+F.filter(f=>f[0]!=(L?'dkn':'nghi')).map(f=>`<th>${f[1]}</th>`).join('')+'<th>Thao tác</th></tr>';
-const P=100,tp=Math.max(1,Math.ceil(rows.length/P));if(page>=tp)page=0;
-$('#eb').innerHTML=rows.slice(page*P,page*P+P).map((e,i)=>`<tr class="${due(e)?'due':''}"><td>${page*P+i+1}</td>`+F.filter(f=>f[0]!=(L?'dkn':'nghi')).map(f=>`<td>${f[2]?fd(e[f[0]]):esc(e[f[0]])}</td>`).join('')+`<td style="white-space:nowrap"><button class="ic" title="Sửa" onclick="editEmp(${e.id})">✏️</button>${L?`<button class="ic" title="Đi làm lại" onclick="back(${e.id})">↩</button>`:`<button class="ic" title="Chuyển nghỉ việc" onclick="leave(${e.id})">🚪</button>`}<button class="ic" title="Xóa" onclick="del(${e.id})">🗑</button></td></tr>`).join('');
-$('#pg').innerHTML=`<button class="b s" ${page?'':'disabled'} onclick="page--;renderEmp()">‹</button> Trang ${page+1}/${tp} <button class="b s" ${page<tp-1?'':'disabled'} onclick="page++;renderEmp()">›</button>`}
-$('#q').oninput=()=>{page=0;renderEmp()};$('#st').onchange=()=>{page=0;renderEmp()};
+let showL=false,fdv='',fvg='',pM='',lM='';
+const HC={a:['nghi'],p:['nghi'],l:['dkn']};
+function fillSel(id,lab,vals,cur){$(id).innerHTML=`<option value="">${lab}</option>`+[...new Set(vals.filter(Boolean))].sort().map(v=>`<option ${v==cur?'selected':''}>${esc(v)}</option>`).join('')}
+function msel(id,vals,cur){$(id).innerHTML='<option value="">Tất cả các tháng</option>'+[...new Set(vals.filter(Boolean).map(d=>d.slice(0,7)))].sort().reverse().map(m=>`<option value="${m}" ${m==cur?'selected':''}>Tháng ${m.slice(5)}/${m.slice(0,4)}</option>`).join('')}
+const ecols=m=>F.filter(f=>!HC[m].includes(f[0]));
+const ehead=m=>'<tr><th>STT</th>'+ecols(m).map(f=>`<th>${f[1]}</th>`).join('')+'<th>Thao tác</th></tr>';
+const erows=(L,m,s)=>L.map((e,i)=>`<tr class="${due(e)?'due':''}"><td>${s+i+1}</td>`+ecols(m).map(f=>`<td>${f[2]?fd(e[f[0]]):esc(e[f[0]])}</td>`).join('')+`<td style="white-space:nowrap"><button class="ic" title="Sửa" onclick="editEmp(${e.id})">✏️</button>${m=='l'?`<button class="ic" title="Đi làm lại" onclick="back(${e.id})">↩</button>`:`<button class="ic" title="Chuyển nghỉ việc" onclick="leave(${e.id})">🚪</button>`}<button class="ic" title="Xóa" onclick="del(${e.id})">🗑</button></td></tr>`).join('')||`<tr><td colspan="${ecols(m).length+2}" style="text-align:center;color:var(--m);padding:16px">Không có dữ liệu</td></tr>`;
+function renderEmp(){const q=$('#q').value.toLowerCase();
+fillSel('#fdv','Tất cả đơn vị',S.emps.map(e=>e.dv),fdv);fillSel('#fvg','Tất cả vùng / tỉnh',S.emps.map(e=>e.vung),fvg);
+const flt=e=>(hs=='Tất cả'||(e.he||'Khác')==hs)&&(!fdv||e.dv==fdv)&&(!fvg||e.vung==fvg)&&(!q||[e.ten,e.msnv,e.cd,e.dv].join(' ').toLowerCase().includes(q));
+const hsList=['Tất cả',...new Set(S.emps.map(e=>e.he||'Khác'))];
+$('#hs').innerHTML=hsList.map(h=>{const n=S.emps.filter(e=>!e.nghi&&(h=='Tất cả'||(e.he||'Khác')==h)).length;return`<span class="pill ${h==hs?'on':''}" onclick="hs='${esc(h)}';page=0;renderEmp()">${esc(h)} (${n})</span>`}).join('');
+const A=S.emps.filter(e=>!e.nghi&&flt(e)),PA=A.filter(e=>e.dkn),LA=S.emps.filter(e=>e.nghi&&flt(e));
+$('#cnt').textContent=A.length+' nhân viên đang làm';
+$('#tg').textContent=(showL?'🙈 Ẩn':'👁 Hiện')+` DS dự kiến nghỉ (${PA.length}) / đã nghỉ việc (${LA.length})`;$('#lw').classList.toggle('hide',!showL);
+$('#eh').innerHTML=ehead('a');const P=100,tp=Math.max(1,Math.ceil(A.length/P));if(page>=tp)page=0;
+$('#eb').innerHTML=erows(A.slice(page*P,page*P+P),'a',page*P);
+$('#pg').innerHTML=`<button class="b s" ${page?'':'disabled'} onclick="page--;renderEmp()">‹</button> Trang ${page+1}/${tp} <button class="b s" ${page<tp-1?'':'disabled'} onclick="page++;renderEmp()">›</button>`;
+if(showL){msel('#mp',PA.map(e=>e.dkn),pM);msel('#ml',LA.map(e=>e.nghi),lM);
+const P2=PA.filter(e=>!pM||e.dkn.slice(0,7)==pM).sort((a,b)=>a.dkn<b.dkn?-1:1),L2=LA.filter(e=>!lM||e.nghi.slice(0,7)==lM).sort((a,b)=>a.nghi<b.nghi?1:-1);
+$('#cp').textContent=P2.length+' người';$('#cl').textContent=L2.length+' người';
+$('#ph').innerHTML=ehead('p');$('#pb').innerHTML=erows(P2,'p',0);$('#lh').innerHTML=ehead('l');$('#lb').innerHTML=erows(L2,'l',0)}}
+$('#q').oninput=()=>{page=0;renderEmp()};$('#fdv').onchange=e=>{fdv=e.target.value;page=0;renderEmp()};$('#fvg').onchange=e=>{fvg=e.target.value;page=0;renderEmp()};
+$('#tg').onclick=()=>{showL=!showL;renderEmp()};$('#mp').onchange=e=>{pM=e.target.value;renderEmp()};$('#ml').onchange=e=>{lM=e.target.value;renderEmp()};
 /* ---------- Import/Export ---------- */
 const MAP={'hệ thống':'he','vùng':'vung','kênh':'kenh','msnv':'msnv','họ và tên':'ten','chức danh chuyên môn':'cd','đơn vị':'dv','ngày tháng năm sinh':'ns','ngày sinh':'ns','ngày bắt đầu làm việc':'nbd','ngày nghỉ việc':'nghi','ngày dự kiến nghỉ việc':'dkn','phân loại':'pl','ghi chú':'gc'};
 function cv(v,k){if(v==null||v===0||v==='0')return'';if(v instanceof Date)return iso(new Date(v.getTime()+43200000));v=String(v).trim();if(['ns','nbd','nghi','dkn'].includes(k)){const m=v.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})/);if(m)return`${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;return/^\d{4}-\d\d-\d\d/.test(v)?v.slice(0,10):''}return v}
@@ -117,42 +139,73 @@ const rep=confirm(`Đọc được ${list.length} nhân viên.\nOK = THAY THẾ 
 if(rep){S.emps=list.map(o=>({he:'',vung:'',kenh:'',ten:'',cd:'',dv:'',ns:'',nbd:'',nghi:'',dkn:'',pl:'',gc:'',...o,id:++S.nid}))}
 else list.forEach(o=>{const e=S.emps.find(x=>x.msnv==o.msnv);e?Object.assign(e,o):S.emps.push({he:'',vung:'',kenh:'',ten:'',cd:'',dv:'',ns:'',nbd:'',nghi:'',dkn:'',pl:'',gc:'',...o,id:++S.nid})});
 save();ev.target.value='';render();alert('Import xong')};
+function mk(aoa){const ws=XLSX.utils.aoa_to_sheet(aoa,{cellDates:true});for(const k in ws)if(k[0]!='!'&&ws[k].t=='d')ws[k].z='dd/mm/yyyy';return ws}
 function exportX(){const H=F.map(f=>f[1]),wb=XLSX.utils.book_new();
-const sh=l=>XLSX.utils.aoa_to_sheet([['STT',...H],...l.map((e,i)=>[i+1,...F.map(f=>f[2]&&e[f[0]]?new Date(e[f[0]]+'T12:00:00'):e[f[0]])])],{cellDates:true});
+const sh=l=>mk([['STT',...H],...l.map((e,i)=>[i+1,...F.map(f=>f[2]&&e[f[0]]?new Date(e[f[0]]+'T12:00:00'):e[f[0]])])],{cellDates:true});
 XLSX.utils.book_append_sheet(wb,sh(act()),'DS');XLSX.utils.book_append_sheet(wb,sh(gone()),'Nghỉ việc');
 XLSX.writeFile(wb,'Danh_sach_nhan_su_'+TODAY+'.xlsx',{cellDates:true})}
 /* ---------- Recruitment ---------- */
-const RF=[['he','Hệ thống'],['vung','Vùng'],['kenh','Kênh'],['dv','Đơn vị'],['cd','Vị trí tuyển dụng'],['pl','Phân loại'],['sl','Số lượng','number'],['ngay','Dự kiến nhận việc','date']];
-function addRec(){form('Thêm nhu cầu tuyển dụng',RF,{sl:1},o=>{o.sl=+o.sl||0;if(!o.dv||!o.cd||o.sl<1){alert('Nhập đơn vị, vị trí và số lượng ≥ 1');return false}S.rec.push({...o,id:++S.nid})})}
-function editRec(id){const r=S.rec.find(x=>x.id==id);form('Sửa nhu cầu tuyển dụng',RF,r,o=>{o.sl=+o.sl||0;Object.assign(r,o)})}
+const RF=[['dv','Đơn vị'],['cd','Vị trí tuyển dụng'],['sl','Số lượng cần tuyển','number'],['bd','Thời gian bắt đầu tuyển','date'],['cv','Số CV đã gửi','number'],['cvd','Số CV đạt','number'],['dat','Đã tuyển','number'],['ngay','Dự kiến nhận việc','date'],['gc','Ghi chú']];
+const nm=o=>{['sl','cv','cvd','dat'].forEach(k=>o[k]=+o[k]||0);return o};
+const rm=r=>Math.max(0,(+r.sl||0)-(+r.dat||0)),sm=(L,f)=>L.reduce((a,r)=>a+(+f(r)||0),0);
+const hc=(h,l,s=65)=>`hsl(${h},${s}%,${l}%)`;
+function uh(){const m={};[...new Set(S.rec.map(r=>r.dv))].sort().forEach((u,i)=>m[u]=Math.round(i*137.5)%360);return m}
+const mode=(arr,k)=>{const m={};arr.forEach(e=>{if(e[k]&&e[k]!='0')m[e[k]]=(m[e[k]]||0)+1});return Object.keys(m).sort((a,b)=>m[b]-m[a])[0]||''};
+function RECS(){return S.rec.filter(r=>!r.done).map(r=>{const D=S.emps.filter(e=>e.dv==r.dv),C=S.emps.filter(e=>e.cd==r.cd);return{...r,he:r.he||mode(D,'he'),vung:r.vung||mode(D,'vung'),kenh:r.kenh||mode(D,'kenh'),pl:r.pl||mode(C,'pl')||mode(D,'pl'),sl:rm(r)}})}
+function addRec(){form('Thêm nhu cầu tuyển dụng',RF,{sl:1,bd:TODAY},o=>{nm(o);if(!o.dv||!o.cd||o.sl<1){alert('Nhập đơn vị, vị trí và số lượng ≥ 1');return false}S.rec.push({...o,id:++S.nid})})}
+function editRec(id){const r=S.rec.find(x=>x.id==id);form('Sửa nhu cầu tuyển dụng',RF.concat(r.done?[['dxong','Ngày hoàn thành','date']]:[]),r,o=>{Object.assign(r,nm(o))})}
+function doneRec(id){const r=S.rec.find(x=>x.id==id);form('Hoàn thành tuyển dụng: '+r.cd+' – '+r.dv,[['dxong','Ngày hoàn thành','date']],{dxong:TODAY},o=>{if(!o.dxong){alert('Nhập ngày hoàn thành');return false}r.done=true;r.dxong=o.dxong})}
+function reopenRec(id){const r=S.rec.find(x=>x.id==id);if(confirm('Mở lại để tiếp tục tuyển?')){r.done=false;r.dxong='';save();render()}}
 function delRec(id){if(confirm('Xóa dòng này?')){S.rec=S.rec.filter(x=>x.id!=id);save();render()}}
-function renderRec(){$('#rb').innerHTML=S.rec.map((r,i)=>`<tr><td>${i+1}</td><td>${esc(r.he)}</td><td>${esc(r.vung)}</td><td>${esc(kn(r.kenh))}</td><td>${esc(r.dv)}</td><td>${esc(r.cd)}</td><td>${esc(r.pl)}</td><td class="n">${r.sl}</td><td>${fd(r.ngay)}</td><td><button class="ic" onclick="editRec(${r.id})">✏️</button><button class="ic" onclick="delRec(${r.id})">🗑</button></td></tr>`).join('')||'<tr><td colspan="10" style="text-align:center;color:var(--m);padding:24px">Chưa có nhu cầu tuyển dụng</td></tr>';
-$('#rf').innerHTML=`<tr><td colspan="7">Tổng cần tuyển</td><td class="n">${S.rec.reduce((a,r)=>a+r.sl,0)}</td><td colspan="2"></td></tr>`}
+let dM='',rch=[];
+const RH=d=>['#','Đơn vị','Vị trí','Số lượng','Bắt đầu tuyển','CV đã gửi','CV đạt','Đã tuyển','Còn lại','Dự kiến nhận việc','Ghi chú',...(d?['Ngày hoàn thành']:[]),'Thao tác'];
+const RR=(r,i,d,H)=>{const h=H[r.dv]||0;return`<tr style="background:${hc(h,95,80)}"><td style="border-left:6px solid ${hc(h,45)}">${i+1}</td><td><span style="background:${hc(h,42)};color:#fff;padding:2px 9px;border-radius:10px;white-space:nowrap">${esc(r.dv)}</span></td><td>${esc(r.cd)}</td><td class="n">${r.sl}</td><td>${fd(r.bd)}</td><td class="n">${r.cv||0}</td><td class="n">${r.cvd||0}</td><td class="n">${r.dat||0}</td><td class="n"><b>${rm(r)}</b></td><td>${fd(r.ngay)}</td><td>${esc(r.gc)}</td>${d?`<td>${fd(r.dxong)}</td>`:''}<td style="white-space:nowrap"><button class="ic" title="Sửa" onclick="editRec(${r.id})">✏️</button>${d?`<button class="ic" title="Mở lại" onclick="reopenRec(${r.id})">↩</button>`:`<button class="ic" title="Hoàn thành" onclick="doneRec(${r.id})">✔️</button>`}<button class="ic" title="Xóa" onclick="delRec(${r.id})">🗑</button></td></tr>`};
+const RT2=(L,d)=>`<tr><td colspan="3">Tổng</td><td class="n">${sm(L,r=>r.sl)}</td><td></td><td class="n">${sm(L,r=>r.cv)}</td><td class="n">${sm(L,r=>r.cvd)}</td><td class="n">${sm(L,r=>r.dat)}</td><td class="n">${sm(L,rm)}</td><td colspan="${d?4:3}"></td></tr>`;
+function renderRec(){const H=uh(),A=S.rec.filter(r=>!r.done),D0=S.rec.filter(r=>r.done),D=D0.filter(r=>!dM||(r.dxong||'').slice(0,7)==dM);
+msel('#md',D0.map(r=>r.dxong),dM);$('#cd2').textContent=D.length+' vị trí';
+const hd=d=>'<tr>'+RH(d).map(x=>`<th>${x}</th>`).join('')+'</tr>',em=d=>`<tr><td colspan="${RH(d).length}" style="text-align:center;color:var(--m);padding:20px">Chưa có dữ liệu</td></tr>`;
+$('#rh').innerHTML=hd(0);$('#rb').innerHTML=A.map((r,i)=>RR(r,i,0,H)).join('')||em(0);$('#rf').innerHTML=A.length?RT2(A,0):'';
+$('#dh').innerHTML=hd(1);$('#dbd').innerHTML=D.map((r,i)=>RR(r,i,1,H)).join('')||em(1);$('#df').innerHTML=D.length?RT2(D,1):'';
+rch.forEach(c=>c.destroy());rch=[];
+if(!S.rec.length){$('#rdash').innerHTML='';return}
+const us=[...new Set(S.rec.map(r=>r.dv))].sort(),by=f=>us.map(u=>sm(S.rec.filter(r=>r.dv==u),f)),sl=by(r=>r.sl),cv=by(r=>r.cv),cvd=by(r=>r.cvd),dat=by(r=>r.dat);
+const T=a=>a.reduce((x,y)=>x+y,0),pc=(a,b)=>b?(a*100/b).toFixed(1)+'%':'0%';
+$('#rdash').innerHTML=`<h3 style="margin:4px 0 12px">📊 Dashboard tuyển dụng</h3><div class="kp"><div class="k"><small>Số lượng cần tuyển</small><b>${T(sl)}</b></div><div class="k"><small>CV đã nhận</small><b>${T(cv)}</b></div><div class="k g"><small>CV đạt (tỷ lệ đạt)</small><b>${T(cvd)} <small>${pc(T(cvd),T(cv))}</small></b></div><div class="k g"><small>Đã tuyển (hoàn thành)</small><b>${T(dat)} <small>${pc(T(dat),T(sl))}</small></b></div><div class="k o"><small>Còn lại cần tuyển</small><b>${Math.max(0,T(sl)-T(dat))}</b></div></div>
+<div class="grid"><div class="card"><div class="ch"><canvas id="rc1"></canvas></div></div><div class="card"><div class="ch"><canvas id="rc2"></canvas></div></div></div>`;
+const o=t=>({maintainAspectRatio:false,plugins:{legend:{position:'bottom'},title:{display:true,text:t}}});
+rch.push(new Chart($('#rc1'),{type:'bar',data:{labels:us,datasets:[{label:'CV đã nhận',data:cv,backgroundColor:'#94a3b8'},{label:'CV đạt',data:cvd,backgroundColor:'#16a34a'}]},options:o('Số lượng CV nhận và đạt theo đơn vị')}));
+rch.push(new Chart($('#rc2'),{type:'bar',data:{labels:us,datasets:[{label:'Cần tuyển',data:sl,backgroundColor:us.map(u=>hc(H[u],82,75)),borderColor:us.map(u=>hc(H[u],42)),borderWidth:2},{label:'Đã tuyển',data:dat,backgroundColor:us.map(u=>hc(H[u],42))}]},options:o('Số lượng đã tuyển so với cần tuyển (mỗi đơn vị một màu)')}))}
+$('#md').onchange=e=>{dM=e.target.value;renderRec()};
+function dlRec(){const wb=XLSX.utils.book_new(),f=(L,d)=>[RH(d).slice(0,-1),...L.map((r,i)=>[i+1,r.dv,r.cd,r.sl,fd(r.bd),r.cv||0,r.cvd||0,r.dat||0,rm(r),fd(r.ngay),r.gc||'',...(d?[fd(r.dxong)]:[])])];
+XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(f(S.rec.filter(r=>!r.done),0)),'Đang tuyển');XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(f(S.rec.filter(r=>r.done),1)),'Đã tuyển xong');XLSX.writeFile(wb,'Tuyen_dung_'+TODAY+'.xlsx')}
 /* ---------- Reports ---------- */
 const RT=['1. Biến động theo kênh','2. Biến động theo đơn vị','3. Biến động theo vị trí','4. Báo cáo khác','5. Theo tháng / năm','6. Thâm niên & độ tuổi'];
 $('#rt').innerHTML=RT.map((t,i)=>`<button onclick="rtab=${i};renderRep()">${t}</button>`).join('');
 const cnt=(arr,f,w)=>{const m={};arr.forEach(x=>{const k=f(x);m[k]=(m[k]||0)+(w?w(x):1)});return m};
 function dash(kp,head,rows,tot,ch,extra){const el=$('#rp');Object.values(charts).forEach(c=>c.destroy());charts={};
-el.innerHTML=(extra||'')+`<div class="kp">${kp.map(k=>`<div class="k ${k[2]||''}"><small>${k[0]}</small><b>${k[1]}</b></div>`).join('')}</div>
+lastX=[{n:RT[rtab],head,rows,tot}];el.innerHTML=(extra||'')+`<div class="bar"><span class="sp"></span><button class="b g" onclick="dlX()">⬇ Tải Excel</button></div><div class="kp">${kp.map(k=>`<div class="k ${k[2]||''}"><small>${k[0]}</small><b>${k[1]}</b></div>`).join('')}</div>
 <div class="grid"><div class="card"><div class="ch"><canvas id="c1"></canvas></div></div><div class="card"><div class="ch"><canvas id="c2"></canvas></div></div></div>
 <div class="card"><div class="tw"><table><thead><tr>${head.map((h,i)=>`<th class="${i?'n':''}">${h}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr>${r.map((c,i)=>`<td class="${i&&!String(c).includes('<')?'n':''}">${c}</td>`).join('')}</tr>`).join('')}</tbody>${tot?`<tfoot><tr>${tot.map((c,i)=>`<td class="${i?'n':''}">${c}</td>`).join('')}</tr></tfoot>`:''}</table></div></div>`;
 const col=['#2563eb','#dc2626','#16a34a','#f59e0b','#7c3aed','#0891b2'];
 charts.a=new Chart($('#c1'),{type:'bar',data:{labels:ch.labels,datasets:ch.sets.map((s,i)=>({label:s[0],data:s[1],backgroundColor:col[s[2]??i],borderColor:col[s[2]??i],type:s[3]}))},options:{maintainAspectRatio:false,plugins:{legend:{position:'bottom'}}}});
 const p=ch.pie;charts.b=new Chart($('#c2'),{type:'doughnut',data:{labels:p[0],datasets:[{data:p[1],backgroundColor:['#2563eb','#16a34a','#f59e0b','#7c3aed','#0891b2','#dc2626','#64748b','#db2777','#84cc16','#f97316']}]},options:{maintainAspectRatio:false,plugins:{legend:{position:'right'},title:{display:true,text:p[2]}}}})}
+let lastX=[];
+const cl=c=>{if(typeof c=='number')return c;const d=document.createElement('div');d.innerHTML=String(c);const i=d.querySelector('input');if(i)return +i.value;const s=d.textContent;return/^-?\d+(\.\d+)?$/.test(s)?+s:s};
+function dlX(){const wb=XLSX.utils.book_new();lastX.forEach(s=>{const a=[s.head,...s.rows.map(r=>r.map(cl))];if(s.tot)a.push(s.tot.map(cl));XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(a),s.n.replace(/[\\\/?*\[\]:]/g,'').slice(0,31))});XLSX.writeFile(wb,'Bao_cao_'+(rtab+1)+'_'+TODAY+'.xlsx')}
 const sum=(r,i)=>r.reduce((a,x)=>a+x[i],0);
 function renderRep(){[...$('#rt').children].forEach((b,i)=>b.classList.toggle('on',i==rtab));[r1,r2,r3,r4,r5,r6][rtab]()}
-function r1(){const A=act(),c=cnt(A,e=>kn(e.kenh)),g=cnt(A.filter(e=>e.dkn),e=>kn(e.kenh)),t=cnt(S.rec,r=>kn(r.kenh),r=>r.sl);
+function r1(){const A=act(),c=cnt(A,e=>kn(e.kenh)),g=cnt(A.filter(e=>e.dkn),e=>kn(e.kenh)),t=cnt(RECS(),r=>kn(r.kenh),r=>r.sl);
 const ks=[...new Set([...Object.keys(c),...Object.keys(g),...Object.keys(t)])].sort((a,b)=>a=='Khác'?1:b=='Khác'?-1:a.localeCompare(b));
 const rows=ks.map(k=>[k,c[k]||0,g[k]||0,t[k]||0,(c[k]||0)-(g[k]||0)+(t[k]||0)]),m=rows.filter(r=>r[0]!='Khác');
 const T=['Tổng (không gồm Khác)',sum(m,1),sum(m,2),sum(m,3),sum(m,4)];
-dash([['Hiện tại',T[1]],['Nghỉ việc (dự kiến)',T[2],'r'],['Tuyển dụng',T[3],'g'],['Nhân sự sau biến động',T[4],'o']],['Kênh','Hiện tại','Nghỉ việc','Tuyển dụng','Sau biến động'],rows,T,{labels:m.map(r=>r[0]),sets:[['Hiện tại',m.map(r=>r[1])],['Nghỉ việc',m.map(r=>r[2])],['Tuyển dụng',m.map(r=>r[3])],['Sau biến động',m.map(r=>r[4]),3]],pie:[m.map(r=>r[0]),m.map(r=>r[4]),'Cơ cấu sau biến động']})}
-function r2(){const A=act(),c=cnt(A,e=>nv(e.dv)),g=cnt(A.filter(e=>e.dkn),e=>nv(e.dv)),t=cnt(S.rec,r=>nv(r.dv),r=>r.sl);
+dash([['Hiện tại',T[1]],['Nghỉ việc (dự kiến)',T[2],'r'],['Tuyển dụng',T[3],'g'],['Nhân sự sau biến động',T[4],'o']],['Kênh','Hiện tại','Nghỉ việc','Tuyển dụng (còn lại)','Sau biến động'],rows,T,{labels:m.map(r=>r[0]),sets:[['Hiện tại',m.map(r=>r[1])],['Nghỉ việc',m.map(r=>r[2])],['Tuyển dụng',m.map(r=>r[3])],['Sau biến động',m.map(r=>r[4]),3]],pie:[m.map(r=>r[0]),m.map(r=>r[4]),'Cơ cấu sau biến động']})}
+function r2(){const A=act(),c=cnt(A,e=>nv(e.dv)),g=cnt(A.filter(e=>e.dkn),e=>nv(e.dv)),t=cnt(RECS(),r=>nv(r.dv),r=>r.sl);
 const ks=[...new Set([...Object.keys(c),...Object.keys(g),...Object.keys(t)])].sort();
 const rows=ks.map(k=>{const x=S.cut[k]||0;return[esc(k),c[k]||0,t[k]||0,g[k]||0,`<input type="number" min="0" value="${x}" style="width:70px;text-align:right" onchange="S.cut[this.dataset.k]=+this.value;save();r2()" data-k="${esc(k)}">`,(c[k]||0)+(t[k]||0)-(g[k]||0)-x]});
 const T=['Tổng',sum(rows,1),sum(rows,2),sum(rows,3),ks.reduce((a,k)=>a+(S.cut[k]||0),0),sum(rows,5)];
 const top=rows.slice().sort((a,b)=>b[1]-a[1]).slice(0,12);
 dash([['Hiện tại',T[1]],['Dự kiến tăng',T[2],'g'],['Dự kiến giảm',T[3],'r'],['Dự kiến cắt',T[4],'r'],['Nhân sự còn lại',T[5],'o']],['Đơn vị','Hiện tại','Dự kiến tăng','Dự kiến giảm','Dự kiến cắt (nhập)','Nhân sự còn lại'],rows,T,{labels:top.map(r=>r[0].replace(/&amp;/g,'&')),sets:[['Hiện tại',top.map(r=>r[1])],['Tăng',top.map(r=>r[2])],['Giảm+cắt',top.map(r=>r[3]+(S.cut[r[0]]||0))],['Còn lại',top.map(r=>r[5]),3]],pie:[top.map(r=>r[0]),top.map(r=>r[5]),'Nhân sự còn lại (Top 12 đơn vị)']})}
-function grp(keyf,title,hdr){const A=act(),c=cnt(A,keyf),g=cnt(A.filter(e=>e.dkn),keyf),t=cnt(S.rec,keyf,r=>r.sl);
+function grp(keyf,title,hdr){const A=act(),c=cnt(A,keyf),g=cnt(A.filter(e=>e.dkn),keyf),t=cnt(RECS(),keyf,r=>r.sl);
 const ks=[...new Set([...Object.keys(c),...Object.keys(g),...Object.keys(t)])].sort();
 const rows=ks.map(k=>[esc(k),c[k]||0,t[k]||0,g[k]||0,(c[k]||0)+(t[k]||0)-(g[k]||0)]),T=['Tổng',sum(rows,1),sum(rows,2),sum(rows,3),sum(rows,4)];
 const top=rows.slice().sort((a,b)=>b[1]-a[1]).slice(0,14);
@@ -182,15 +235,17 @@ const tbl=(h,r)=>`<div class="tw"><table><thead><tr>${h.map(x=>`<th>${x}</th>`).
 const top=A.filter(e=>e.nbd).sort((a,b)=>a.nbd<b.nbd?-1:a.nbd>b.nbd?1:0).slice(0,n6);
 const bd=A.filter(e=>e.ns&&+e.ns.slice(5,7)==m6).sort((a,b)=>a.ns.slice(8)-b.ns.slice(8));
 const yy=+TODAY.slice(0,4);
+const R1=tb.map((b,i)=>[b[0],tc[i],pc(tc[i],tv)]),R2=ab.map((b,i)=>[b[0],ac[i],pc(ac[i],av)]),R3=bd.map((e,i)=>[i+1,esc(e.ten),esc(e.cd),esc(e.dv),fd(e.ns),yy-+e.ns.slice(0,4)]),R4=top.map((e,i)=>[i+1,esc(e.ten),esc(e.cd),esc(e.dv),age(e)??'',fd(e.nbd),ten(e).toFixed(1)]);
+lastX=[{n:'Thâm niên',head:['Thâm niên','Số lượng','Tỷ lệ'],rows:R1},{n:'Độ tuổi',head:['Độ tuổi','Số lượng','Tỷ lệ'],rows:R2},{n:'Sinh nhật tháng '+m6,head:['STT','Họ tên','Chức danh','Đơn vị','Ngày sinh','Tuổi sau sinh nhật'],rows:R3},{n:'Top thâm niên',head:['Top','Họ tên','Chức danh','Đơn vị','Tuổi','Ngày vào làm','Thâm niên (năm)'],rows:R4}];
 Object.values(charts).forEach(c=>c.destroy());charts={};
-$('#rp').innerHTML=`<div class="card bar" style="margin-bottom:16px"><b>Hệ thống:</b><select onchange="h6=this.value;r6()"><option value="">Tất cả</option>${[...new Set(S.emps.map(e=>e.he||'Khác'))].map(h=>`<option ${h==h6?'selected':''}>${esc(h)}</option>`).join('')}</select><small>Tính trên nhân sự đang làm việc, tại ngày ${fd(TODAY)}</small></div>
+$('#rp').innerHTML=`<div class="card bar" style="margin-bottom:16px"><b>Hệ thống:</b><select onchange="h6=this.value;r6()"><option value="">Tất cả</option>${[...new Set(S.emps.map(e=>e.he||'Khác'))].map(h=>`<option ${h==h6?'selected':''}>${esc(h)}</option>`).join('')}</select><small>Tính trên nhân sự đang làm việc, tại ngày ${fd(TODAY)}</small><span class="sp"></span><button class="b g" onclick="dlX()">⬇ Tải Excel</button></div>
 <div class="kp"><div class="k"><small>Nhân sự đang làm</small><b>${A.length}</b></div><div class="k g"><small>Thâm niên trung bình (năm)</small><b>${avg(tv)}</b></div><div class="k o"><small>Tuổi trung bình</small><b>${avg(av)}</b></div><div class="k r"><small>Sinh nhật tháng ${m6}</small><b>${bd.length}</b></div></div>
-<div class="grid"><div class="card"><h4 style="margin:0 0 8px">Thâm niên</h4><div class="ch" style="height:260px"><canvas id="c1"></canvas></div>${tbl(['Thâm niên','Số lượng','Tỷ lệ'],tb.map((b,i)=>[b[0],tc[i],pc(tc[i],tv)]))}</div>
-<div class="card"><h4 style="margin:0 0 8px">Độ tuổi</h4><div class="ch" style="height:260px"><canvas id="c2"></canvas></div>${tbl(['Độ tuổi','Số lượng','Tỷ lệ'],ab.map((b,i)=>[b[0],ac[i],pc(ac[i],av)]))}</div></div>
+<div class="grid"><div class="card"><h4 style="margin:0 0 8px">Thâm niên</h4><div class="ch" style="height:260px"><canvas id="c1"></canvas></div>${tbl(['Thâm niên','Số lượng','Tỷ lệ'],R1)}</div>
+<div class="card"><h4 style="margin:0 0 8px">Độ tuổi</h4><div class="ch" style="height:260px"><canvas id="c2"></canvas></div>${tbl(['Độ tuổi','Số lượng','Tỷ lệ'],R2)}</div></div>
 <div class="card"><div class="bar"><h4 style="margin:0">🎂 Sinh nhật trong tháng</h4><select onchange="m6=+this.value;r6()">${Array.from({length:12},(_,i)=>`<option value="${i+1}" ${i+1==m6?'selected':''}>Tháng ${i+1}</option>`).join('')}</select></div>
-${tbl(['STT','Họ tên','Chức danh','Đơn vị','Ngày sinh','Tuổi sau sinh nhật'],bd.map((e,i)=>[i+1,esc(e.ten),esc(e.cd),esc(e.dv),fd(e.ns),yy-+e.ns.slice(0,4)]))}</div>
+${tbl(['STT','Họ tên','Chức danh','Đơn vị','Ngày sinh','Tuổi sau sinh nhật'],R3)}</div>
 <div class="card"><div class="bar"><h4 style="margin:0">🏆 Top thâm niên cao nhất</h4><label>Số người:</label><input type="number" min="1" max="500" value="${n6}" style="width:80px" onchange="n6=Math.max(1,+this.value||10);r6()"></div>
-${tbl(['Top','Họ tên','Chức danh','Đơn vị','Tuổi','Ngày vào làm','Thâm niên (năm)'],top.map((e,i)=>[i+1,esc(e.ten),esc(e.cd),esc(e.dv),age(e)??'',fd(e.nbd),ten(e).toFixed(1)]))}</div>`;
+${tbl(['Top','Họ tên','Chức danh','Đơn vị','Tuổi','Ngày vào làm','Thâm niên (năm)'],R4)}</div>`;
 charts.a=new Chart($('#c1'),{type:'bar',data:{labels:tb.map(b=>b[0]),datasets:[{label:'Số nhân sự',data:tc,backgroundColor:['#60a5fa','#2563eb','#1e40af','#16a34a']}]},options:{maintainAspectRatio:false,plugins:{legend:{display:false}}}});
 charts.b=new Chart($('#c2'),{type:'doughnut',data:{labels:ab.map(b=>b[0]),datasets:[{data:ac,backgroundColor:['#f59e0b','#2563eb','#16a34a','#7c3aed']}]},options:{maintainAspectRatio:false,plugins:{legend:{position:'right'}}}})}
 go(0);
