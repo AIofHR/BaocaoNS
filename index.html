@@ -127,7 +127,7 @@ $('#eh').innerHTML=ehead('a');const P=100,tp=Math.max(1,Math.ceil(A.length/P));i
 $('#eb').innerHTML=erows(A.slice(page*P,page*P+P),'a',page*P);
 $('#pg').innerHTML=`<button class="b s" ${page?'':'disabled'} onclick="page--;renderEmp()">‹</button> Trang ${page+1}/${tp} <button class="b s" ${page<tp-1?'':'disabled'} onclick="page++;renderEmp()">›</button>`;
 if(showL){msel('#mp',PA.map(e=>e.dkn),pM);msel('#ml',LA.map(e=>e.nghi),lM);
-const P2=PA.filter(e=>!pM||e.dkn.slice(0,7)==pM).sort((a,b)=>byHc(a,b)||(a.dkn<b.dkn?-1:1)),L2=LA.filter(e=>!lM||e.nghi.slice(0,7)==lM).sort((a,b)=>byHc(a,b)||(a.nghi<b.nghi?1:-1));
+const P2=PA.filter(e=>!pM||e.dkn.slice(0,7)==pM).sort((a,b)=>(a.dkn<b.dkn?-1:a.dkn>b.dkn?1:0)||byDv(a,b)||byHc(a,b)),L2=LA.filter(e=>!lM||e.nghi.slice(0,7)==lM).sort((a,b)=>(a.nghi<b.nghi?1:a.nghi>b.nghi?-1:0)||byDv(a,b)||byHc(a,b));
 $('#cp').textContent=P2.length+' người';$('#cl').textContent=L2.length+' người';
 $('#ph').innerHTML=ehead('p');$('#pb').innerHTML=erows(P2,'p',0);$('#lh').innerHTML=ehead('l');$('#lb').innerHTML=erows(L2,'l',0)}}
 $('#q').oninput=()=>{page=0;renderEmp()};function ms(id,label,vals,set){const el=$(id),v=[...new Set(vals.filter(Boolean))].sort(),sig=v.join('|');[...set].forEach(x=>{if(!v.includes(x))set.delete(x)});
