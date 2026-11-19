@@ -14,7 +14,7 @@ main{padding:18px 24px;max-width:1700px;margin:auto}.card{background:var(--c);bo
 button.b,label.b{background:var(--p);color:#fff;border:0;padding:7px 14px;border-radius:8px;cursor:pointer;font-size:13px;display:inline-block}
 .b.s{background:#e2e8f0;color:var(--t)}.b.r{background:var(--r)}.b.g{background:var(--g)}
 input,select{padding:7px 10px;border:1px solid #cbd5e1;border-radius:8px;font:inherit;background:#fff}
-.pills{display:flex;gap:6px;flex-wrap:wrap}.pill{padding:5px 12px;border-radius:20px;background:#e2e8f0;cursor:pointer;font-size:13px}.pill.on{background:var(--p);color:#fff}
+.pills{display:flex;gap:6px;flex-wrap:wrap}.pill{padding:5px 12px;border-radius:20px;background:#e2e8f0;cursor:pointer;font-size:13px}.pill.on{background:var(--p);color:#fff}.pill.p2.on{background:#0f766e}
 .tw{overflow:auto;max-height:68vh;border:1px solid var(--b);border-radius:8px}
 table{border-collapse:collapse;width:100%;font-size:13px}th{background:#f8fafc;position:sticky;top:0;text-align:left;padding:8px;border-bottom:2px solid var(--b);white-space:nowrap;z-index:1}
 td{padding:6px 8px;border-bottom:1px solid var(--b)}tr:hover td{background:#f8fafc}tr.due td{background:#fee2e2;color:#991b1b;font-weight:600}
@@ -46,6 +46,7 @@ body.prt #rdash{break-before:page}body.prt .grid{grid-template-columns:1fr 1fr}}
 <section id="s0">
 <div class="card">
 <div class="bar"><div class="pills" id="hs"></div></div>
+<div class="bar"><div class="pills" id="pls"></div></div>
 <div class="bar"><input id="q" placeholder="🔍 Tìm tên, MSNV, chức danh..." size="26"><details class="ms" id="fdv"></details><details class="ms" id="fcd"></details><span class="sp"></span><button class="b s" id="tg"></button></div>
 <div class="bar"><button class="b g" onclick="addEmp()">＋ Thêm nhân viên</button>
 <label class="b s">⬆ Import Excel<input type="file" id="imp" accept=".xlsx,.xls,.csv" hidden></label>
@@ -113,7 +114,9 @@ $('#n').onclick=()=>{if($('#nd').classList.contains('hide')){$('#nd').classList.
 function done(){asking=false;$('#mm').innerHTML='';save();render()}}
 setInterval(()=>{if(iso(new Date())!=TODAY)location.reload();else checkDue()},60000);
 /* ---------- Employees ---------- */
-let showL=false,pM='',lM='';const fdvS=new Set(),fcdS=new Set(),msCache={};
+let showL=false,pM='',lM='',pls='Tất cả';
+const PLG={TCN:['TCN','GĐV','GĐCN','GĐKV'],NVKD:['NVKD','TPKD']};/* gộp phân loại: nhóm = các mã thành phần */
+const plg=p=>{const u=(p||'').trim().toUpperCase();if(!u||u=='0')return'Khác';for(const g in PLG)if(PLG[g].some(x=>x.toUpperCase()==u))return g;return p.trim()};const fdvS=new Set(),fcdS=new Set(),msCache={};
 const HC={a:['nghi'],p:['nghi'],l:['dkn']};
 function fillSel(id,lab,vals,cur){$(id).innerHTML=`<option value="">${lab}</option>`+[...new Set(vals.filter(Boolean))].sort().map(v=>`<option ${v==cur?'selected':''}>${esc(v)}</option>`).join('')}
 function msel(id,vals,cur){$(id).innerHTML='<option value="">Tất cả các tháng</option>'+[...new Set(vals.filter(Boolean).map(d=>d.slice(0,7)))].sort().reverse().map(m=>`<option value="${m}" ${m==cur?'selected':''}>Tháng ${m.slice(5)}/${m.slice(0,4)}</option>`).join('')}
@@ -124,10 +127,13 @@ const HO=['VPT','UNIS GREEN','UNIS','UNIMAX','UNILUX','UNICHEMI','LOTINA'],hr=h=
 const byHc=(a,b)=>hr(a.he)-hr(b.he)||(a.he||'').localeCompare(b.he||'','vi')||(a.dv||'\uffff').localeCompare(b.dv||'\uffff','vi');
 const byDv=(a,b)=>(a.dv||'\uffff').localeCompare(b.dv||'\uffff','vi');
 function renderEmp(){const q=$('#q').value.toLowerCase();
-ms('#fdv','Tất cả đơn vị',S.emps.map(e=>e.dv),fdvS);ms('#fcd','Tất cả vị trí',S.emps.map(e=>e.cd),fcdS);
-const flt=e=>(hs=='Tất cả'||(e.he||'Khác')==hs)&&(!fdvS.size||fdvS.has(e.dv))&&(!fcdS.size||fcdS.has(e.cd))&&(!q||[e.ten,e.msnv,e.cd,e.dv].join(' ').toLowerCase().includes(q));
+ms('#fdv','Tất cả đơn vị',S.emps.map(e=>e.dv),fdvS);ms('#fcd','Tất cả vị trí',S.emps.filter(e=>!fdvS.size||fdvS.has(e.dv)).map(e=>e.cd),fcdS);
+const flt0=e=>(hs=='Tất cả'||(e.he||'Khác')==hs)&&(!fdvS.size||fdvS.has(e.dv))&&(!fcdS.size||fcdS.has(e.cd))&&(!q||[e.ten,e.msnv,e.cd,e.dv].join(' ').toLowerCase().includes(q)),flt=e=>flt0(e)&&(pls=='Tất cả'||plg(e.pl)==pls);
 const hsList=['Tất cả',...[...new Set(S.emps.map(e=>e.he||'Khác'))].sort((a,b)=>hr(a)-hr(b)||a.localeCompare(b,'vi'))];
 $('#hs').innerHTML=hsList.map(h=>{const n=S.emps.filter(e=>!e.nghi&&(h=='Tất cả'||(e.he||'Khác')==h)).length;return`<span class="pill ${h==hs?'on':''}" onclick="hs='${esc(h)}';page=0;renderEmp()">${esc(h)} (${n})</span>`}).join('');
+const cP={};S.emps.filter(e=>!e.nghi&&flt0(e)).forEach(e=>{const g=plg(e.pl);cP[g]=(cP[g]||0)+1});if(pls!='Tất cả'&&!(pls in cP))cP[pls]=0;
+const pk=Object.keys(cP).sort((a,b)=>a=='Khác'?1:b=='Khác'?-1:cP[b]-cP[a]||a.localeCompare(b,'vi')),pt=pk.reduce((a,k)=>a+cP[k],0);
+$('#pls').innerHTML='<b style="align-self:center;color:var(--m)">Phân loại:</b>'+[['Tất cả',pt],...pk.map(k=>[k,cP[k]])].map(([h,n])=>`<span class="pill p2 ${h==pls?'on':''}" onclick="pls='${esc(h)}';page=0;renderEmp()">${esc(h)} (${n})</span>`).join('');
 const A=S.emps.filter(e=>!e.nghi&&flt(e)).sort(byHc),PA=A.filter(e=>e.dkn),LA=S.emps.filter(e=>e.nghi&&flt(e)).sort(byHc);
 $('#cnt').textContent=A.length+' nhân viên đang làm';
 $('#tg').textContent=(showL?'🙈 Ẩn':'👁 Hiện')+` DS dự kiến nghỉ (${PA.length}) / đã nghỉ việc (${LA.length})`;$('#lw').classList.toggle('hide',!showL);
